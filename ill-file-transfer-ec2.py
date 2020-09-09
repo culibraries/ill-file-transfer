@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import boto3
-import config
 import os, subprocess
 
 class ILLBucket:
@@ -43,11 +42,11 @@ if __name__ == "__main__":
     # The former FTP method has been replaced with secure (SSH) file transfer, which
     # is run as a subprocess using sshpass. Arguments:
     #
-    # -fcredentials      password required to log in to the remote host is the first line in the name file
-    # scp                command to run (in this case, secure copy)
-    # -P 222             port number on the remote host (part of scp)
-    # doc                name of the document to be transferred (part of scp)
-    # user@host          user and host names (part of scp)
+    # -e         use SSHPASS environment variable for password
+    # scp        command to run (in this case, secure copy)
+    # -P 222     port number on the remote host (part of scp)
+    # doc        name of the document to be transferred (part of scp)
+    # user@host  user and host names (part of scp)
     #
     # The remaining subprocess parameters are self-explanatory or check the Python documentation.
     #
@@ -56,19 +55,22 @@ if __name__ == "__main__":
 
     bucket = ILLBucket('cubl-ill')
     if len(bucket.doc_list()) != 0:
+        os.chdir('/home/ec2-user/scripts')
         try:
             for doc in bucket.doc_list():
                 bucket.download(doc)
-                subprocess.run(
+                cp = subprocess.run(
                     args=['sshpass',
-                          '-fcredentials',
+                          '-e',
                           'scp',
                           '-P 222',
                           doc,
-                          '{0}@{1}'.format(config.conn['user'], config.conn['host'])],
+                          'hosted@206.107.44.246:PDF/'],
                     stdout=subprocess.DEVNULL,
-                    timeout=30,
+                    shell=True,
+                    timeout=60,
                     check=True)
+                cp.check_returncode()
                 bucket.mark_as_processed(doc)
                 os.remove(doc)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
